@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0d17" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Arena Gerak — Lampu Hijau, Lampu Merah</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Video kamera: disembunyikan, hanya dipakai sebagai sumber piksel untuk Canvas -->
+  <video id="video" playsinline muted autoplay></video>
+
+  <!-- =====================================================
+       LAYAR 1 — MENU AWAL
+       ===================================================== -->
+  <section id="screenMenu" class="screen menu active">
+    <div class="menu-bg" aria-hidden="true">
+      <span class="shape circle"></span>
+      <span class="shape tri"></span>
+      <span class="shape square"></span>
+      <span class="shape ring"></span>
+    </div>
+
+    <div class="menu-card">
+      <p class="eyebrow">ICE BREAKING • PERMAINAN GERAK BERBASIS KAMERA</p>
+      <h1 class="title">
+        <span class="t-green">LAMPU HIJAU</span>
+        <span class="t-red">LAMPU MERAH</span>
+      </h1>
+      <p class="lead">
+        Bergeraklah saat lampu hijau, membeku saat lampu merah.
+        Kameramu membaca gerakan tubuhmu — tanpa menyentuh keyboard.
+      </p>
+
+      <fieldset class="seg-wrap">
+        <legend>Tingkat kesulitan</legend>
+        <div class="seg">
+          <input type="radio" name="difficulty" id="diffEasy" value="easy" />
+          <label for="diffEasy">MUDAH</label>
+          <input type="radio" name="difficulty" id="diffNormal" value="normal" checked />
+          <label for="diffNormal">NORMAL</label>
+          <input type="radio" name="difficulty" id="diffHard" value="hard" />
+          <label for="diffHard">SULIT</label>
+        </div>
+        <p class="seg-desc" id="diffDesc"></p>
+      </fieldset>
+
+      <div class="menu-actions">
+        <button id="btnStart" class="btn btn-primary btn-lg" type="button">MULAI PERMAINAN</button>
+        <button id="btnEnableCam" class="btn btn-teal" type="button">AKTIFKAN KAMERA</button>
+        <button id="btnHowto" class="btn btn-ghost" type="button">CARA BERMAIN</button>
+        <button class="btn btn-ghost js-sound" type="button">SUARA: NYALA</button>
+        <button class="btn btn-ghost js-fs" type="button" data-label="⛶ LAYAR PENUH">⛶ LAYAR PENUH</button>
+      </div>
+
+      <p class="menu-cam" id="menuCamStatus">Kamera belum aktif. Izin kamera baru diminta setelah kamu menekan tombol.</p>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       LAYAR 2 — ARENA PERMAINAN
+       ===================================================== -->
+  <section id="screenGame" class="screen game">
+
+    <!-- BINGKAI 16:9 TETAP: seluruh game (arena, HUD, kontrol, kamera) ada di sini
+         dan ikut mengecil/membesar mengikuti layar (lihat variabel --u di CSS). -->
+    <div class="frame" id="frame">
+
+      <!-- ARENA (mengisi seluruh bingkai) -->
+      <div class="arena is-idle" id="arena">
+        <div class="sky"></div>
+        <div class="sun"></div>
+        <div class="cloud c1"></div>
+        <div class="cloud c2"></div>
+        <div class="cloud c3"></div>
+        <div class="hills"></div>
+        <div class="wall"></div>
+        <div class="floor"></div>
+        <div class="side-wall left"></div>
+        <div class="side-wall right"></div>
+
+        <!-- Garis lajur & garis jarak (perspektif) -->
+        <svg class="lanes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="24" y1="36" x2="2.7" y2="100" />
+          <line x1="76" y1="36" x2="97.3" y2="100" />
+          <line class="dash" x1="22" y1="42" x2="78" y2="42" />
+          <line class="dash" x1="19.3" y1="50" x2="80.7" y2="50" />
+          <line class="dash" x1="16" y1="60" x2="84" y2="60" />
+          <line class="dash" x1="12" y1="72" x2="88" y2="72" />
+        </svg>
+
+        <div class="finish-line"><span>FINIS</span></div>
+        <div class="start-line"><span>START</span></div>
+
+        <!-- BONEKA PENJAGA (SVG + CSS 3D untuk putaran kepala) -->
+        <div class="doll facing" id="doll">
+          <svg class="doll-body" viewBox="0 0 100 122.5" aria-hidden="true">
+            <!-- lengan -->
+            <rect x="6" y="14" width="16" height="54" rx="8" fill="#7a3fd1" transform="rotate(7 14 14)" />
+            <rect x="78" y="14" width="16" height="54" rx="8" fill="#7a3fd1" transform="rotate(-7 86 14)" />
+            <circle cx="9" cy="70" r="7" fill="#f6d2b0" />
+            <circle cx="91" cy="70" r="7" fill="#f6d2b0" />
+            <!-- gaun -->
+            <path d="M28 10 L72 10 L92 112 L8 112 Z" fill="#7a3fd1" />
+            <path d="M8 104 L92 104 L92 112 L8 112 Z" fill="#5b2aa6" />
+            <!-- kerah -->
+            <path d="M34 10 L50 30 L66 10 Z" fill="#ffffff" />
+            <circle cx="50" cy="40" r="3" fill="#ffd54a" />
+            <circle cx="50" cy="54" r="3" fill="#ffd54a" />
+            <circle cx="50" cy="68" r="3" fill="#ffd54a" />
+            <!-- sepatu -->
+            <rect x="24" y="110" width="22" height="12" rx="5" fill="#2b1b12" />
+            <rect x="54" y="110" width="22" height="12" rx="5" fill="#2b1b12" />
+          </svg>
+
+          <div class="doll-head" id="dollHead">
+            <!-- sisi depan (wajah) -->
+            <div class="face front">
+              <svg viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="9" cy="48" r="10" fill="#4a2a1a" />
+                <circle cx="91" cy="48" r="10" fill="#4a2a1a" />
+                <rect x="3" y="40" width="12" height="5" rx="2" fill="#ff4d6d" />
+                <rect x="85" y="40" width="12" height="5" rx="2" fill="#ff4d6d" />
+                <circle cx="50" cy="52" r="38" fill="#f6d2b0" />
+                <path d="M12 50 A38 38 0 0 1 88 50 Q70 36 50 46 Q30 36 12 50 Z" fill="#4a2a1a" />
+                <circle cx="35" cy="58" r="7.5" fill="#fff" />
+                <circle cx="65" cy="58" r="7.5" fill="#fff" />
+                <circle class="eye" cx="35" cy="58" r="4.5" />
+                <circle class="eye" cx="65" cy="58" r="4.5" />
+                <circle cx="24" cy="70" r="5" fill="#ff9fb2" opacity=".7" />
+                <circle cx="76" cy="70" r="5" fill="#ff9fb2" opacity=".7" />
+                <path d="M42 76 Q50 82 58 76" stroke="#8b3a3a" stroke-width="2.5" fill="none" stroke-linecap="round" />
+              </svg>
+            </div>
+            <!-- sisi belakang (rambut) -->
+            <div class="face back">
+              <svg viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="9" cy="48" r="10" fill="#4a2a1a" />
+                <circle cx="91" cy="48" r="10" fill="#4a2a1a" />
+                <rect x="3" y="40" width="12" height="5" rx="2" fill="#ff4d6d" />
+                <rect x="85" y="40" width="12" height="5" rx="2" fill="#ff4d6d" />
+                <circle cx="50" cy="52" r="38" fill="#4a2a1a" />
+                <path d="M50 14 L50 90" stroke="#35200f" stroke-width="2" />
+                <path d="M30 24 Q50 34 70 24" stroke="#35200f" stroke-width="2" fill="none" />
+                <path d="M26 44 Q50 58 74 44" stroke="#35200f" stroke-width="2" fill="none" />
+                <path d="M30 66 Q50 78 70 66" stroke="#35200f" stroke-width="2" fill="none" />
+                <path d="M50 16 L36 6 L36 24 Z" fill="#ff4d6d" />
+                <path d="M50 16 L64 6 L64 24 Z" fill="#ff4d6d" />
+                <circle cx="50" cy="16" r="4" fill="#d62f50" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- PEMAIN (siluet 2D sederhana) -->
+        <div class="player" id="player">
+          <svg viewBox="0 0 50 120" aria-hidden="true">
+            <g class="rig">
+              <g class="leg l"><rect x="14" y="64" width="10" height="46" rx="5" fill="#0f6b5c" /><rect x="12" y="106" width="14" height="8" rx="4" fill="#f2f2f2" /></g>
+              <g class="leg r"><rect x="26" y="64" width="10" height="46" rx="5" fill="#0f6b5c" /><rect x="24" y="106" width="14" height="8" rx="4" fill="#f2f2f2" /></g>
+              <g class="arm l"><rect x="6" y="30" width="9" height="34" rx="4.5" fill="#12856f" /><circle cx="10.5" cy="66" r="4.5" fill="#f1c9a5" /></g>
+              <g class="arm r"><rect x="35" y="30" width="9" height="34" rx="4.5" fill="#12856f" /><circle cx="39.5" cy="66" r="4.5" fill="#f1c9a5" /></g>
+              <rect x="11" y="26" width="28" height="42" rx="9" fill="#17a589" />
+              <text x="25" y="52" text-anchor="middle" font-size="11" font-weight="800" fill="#ffffff" font-family="Arial, sans-serif">07</text>
+              <circle cx="25" cy="14" r="11" fill="#f1c9a5" />
+              <path d="M14 13 A11 11 0 0 1 36 13 Q25 7 14 13 Z" fill="#2b1b12" />
+            </g>
+          </svg>
+        </div>
+
+        <!-- Efek warna, banner, lampu sinyal -->
+        <div class="tint"></div>
+        <div class="flash"></div>
+        <div class="banner" id="banner">KAMERA BELUM AKTIF</div>
+        <div class="signal" aria-hidden="true">
+          <span class="lamp r"></span>
+          <span class="lamp a"></span>
+          <span class="lamp g"></span>
+        </div>
+        <div class="alert" id="alertBox">GERAKAN TERDETEKSI!</div>
+
+        <!-- Overlay kalibrasi / hitung mundur / jeda -->
+        <div class="overlay" id="overlay">
+          <div class="ov-title" id="ovTitle"></div>
+          <div class="ov-big" id="ovBig"></div>
+          <div class="ov-text" id="ovText"></div>
+          <div class="ov-bar" id="ovBarWrap"><div class="ov-bar-fill" id="ovBar"></div></div>
+        </div>
+      </div>
+
+      <!-- BAR ATAS: menu, tingkat, HUD, layar penuh -->
+      <div class="topbar">
+        <button id="btnMenu" class="btn btn-ghost btn-sm" type="button">← MENU</button>
+        <span id="hudLevel" class="chip level">NORMAL</span>
+        <div class="hud">
+          <div class="hud-item"><small>WAKTU</small><b id="hudTime">120.0</b></div>
+          <div class="hud-item"><small>JARAK</small><b id="hudDist">30.0 m</b></div>
+          <div class="hud-item"><small>PENALTI</small><b id="hudPen">0</b></div>
+          <div class="hud-item"><small>COBA</small><b id="hudAtt">0</b></div>
+        </div>
+        <button class="btn btn-ghost btn-sm js-fs" type="button" data-label="⛶ PENUH" aria-label="Layar penuh">⛶ PENUH</button>
+      </div>
+
+      <div class="track" aria-label="Progres menuju finis">
+        <div class="track-fill" id="progFill"></div>
+      </div>
+
+      <!-- KONTROL (kiri bawah) -->
+      <div class="controls">
+        <button id="btnPlay" class="btn btn-primary" type="button">▶ MULAI</button>
+        <button id="btnRestart" class="btn btn-ghost" type="button">↻ ULANG</button>
+        <button id="btnRecalib" class="btn btn-ghost" type="button">⌖ KALIBRASI</button>
+        <button id="btnCamToggle" class="btn btn-ghost" type="button">MATIKAN KAMERA</button>
+        <button id="btnSound" class="btn btn-ghost js-sound" type="button">SUARA: NYALA</button>
+      </div>
+
+      <!-- KAMERA & DETEKSI (kanan bawah) -->
+      <div class="campanel">
+        <div class="cam-preview" id="camPreview">
+          <canvas id="preview" width="128" height="96"></canvas>
+          <span class="chip off" id="camChip">KAMERA BELUM AKTIF</span>
+        </div>
+        <div class="meter" aria-hidden="true">
+          <div class="meter-fill" id="meterFill"></div>
+          <div class="meter-mark"></div>
+        </div>
+        <p class="meter-legend">Lewati garis putih = bergerak</p>
+        <label class="sens-label" for="sens">Sensitivitas: <b id="sensVal">5</b></label>
+        <input type="range" id="sens" min="1" max="10" step="1" value="5" />
+        <p class="hint" id="calibInfo">Belum dikalibrasi.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pemberitahuan: HP harus landscape -->
+  <div class="rotate-notice" id="rotateNotice" role="alert">
+    <svg class="rot-icon" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="20" y="6" width="24" height="44" rx="4" fill="none" stroke="currentColor" stroke-width="4" />
+      <circle cx="32" cy="44" r="2" fill="currentColor" />
+      <path d="M8 56 Q32 66 56 56" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+      <path d="M50 52 L57 56 L49 60" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <h3>PUTAR HP KAMU</h3>
+    <p>Game ini hanya bisa dimainkan dalam posisi <b>landscape</b> (mendatar). Putar HP-mu, dan pastikan kunci rotasi layar dalam keadaan mati.</p>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- =====================================================
+       MODAL: CARA BERMAIN
+       ===================================================== -->
+  <div class="modal" id="modalHowto" role="dialog" aria-modal="true" aria-labelledby="howtoTitle">
+    <div class="modal-card">
+      <h3 id="howtoTitle">CARA BERMAIN</h3>
+      <ol class="howto">
+        <li>Tekan <b>AKTIFKAN KAMERA</b> atau <b>MULAI PERMAINAN</b>, lalu izinkan akses kamera di browser.</li>
+        <li>Di HP, mainkan dalam posisi <b>landscape</b> (mendatar). Tekan tombol <b>⛶ PENUH</b> untuk layar penuh.</li>
+        <li>Berdiri sekitar 1,5–2 meter dari kamera dengan tubuh terlihat. Cahaya ruangan sebaiknya cukup dan stabil.</li>
+        <li>Saat kalibrasi (±3 detik), berdirilah normal dan <b>diam</b>.</li>
+        <li><b>LAMPU HIJAU:</b> berjalan atau berlari di tempat. Semakin banyak gerakan, semakin cepat kamu maju.</li>
+        <li><b>LAMPU MERAH:</b> diam sepenuhnya! Jika gerakan terdeteksi, kamu kena penalti (progres dan/atau waktu berkurang).</li>
+        <li>Capai garis finis sebelum waktu habis untuk menang.</li>
+      </ol>
+      <p class="hint">Catatan: deteksi memakai perubahan piksel kamera, jadi hanya mengenali gerakan secara umum — bukan posisi tubuh atau lompatan secara akurat. Atur <b>Sensitivitas</b> bila terlalu peka atau kurang peka.</p>
+      <div class="modal-actions">
+        <button id="btnHowtoClose" class="btn btn-primary" type="button">MENGERTI</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       MODAL: ERROR KAMERA
+       ===================================================== -->
+  <div class="modal" id="modalError" role="dialog" aria-modal="true" aria-labelledby="errTitle">
+    <div class="modal-card">
+      <h3 id="errTitle">KAMERA BERMASALAH</h3>
+      <p id="errMsg"></p>
+      <ul class="tips" id="errTips"></ul>
+      <div class="modal-actions">
+        <button id="btnErrRetry" class="btn btn-primary" type="button">COBA LAGI</button>
+        <button id="btnErrClose" class="btn btn-ghost" type="button">TUTUP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       MODAL: HASIL
+       ===================================================== -->
+  <div class="modal" id="modalResult" role="dialog" aria-modal="true" aria-labelledby="resTitle">
+    <div class="modal-card result">
+      <h3 id="resTitle">KAMU BERHASIL!</h3>
+      <p id="resSub"></p>
+      <div class="stats" id="resStats"></div>
+      <div class="modal-actions">
+        <button id="btnResAgain" class="btn btn-primary" type="button">MAIN LAGI</button>
+        <button id="btnResMenu" class="btn btn-ghost" type="button">MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
